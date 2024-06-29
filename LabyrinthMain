@@ -1,0 +1,193 @@
+
+from pygame import *
+
+win_height=500
+win_width=700
+size=(700,500)
+window=display.set_mode(size)
+display.set_caption('Maze Game')
+#Color
+YELLOW = (139,128,0)
+#Text
+font.init()
+font = font.SysFont('Arial', 60)
+win = font.render('YOU WIN!', True, YELLOW)
+
+#Background
+bg = transform.scale(image.load('galaxy_1.jpg'), (700, 500))
+
+class GameSprite(sprite.Sprite):
+    def __init__(self,picture,w,h,x,y):
+        sprite.Sprite.__init__(self)
+        self.image = transform.scale(image.load(picture), (w,h))
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y 
+    def reset(self):
+        window.blit(self.image,(self.rect.x, self.rect.y))
+
+class Player(GameSprite):
+    def __init__(self, picture,w,h,x,y, x_speed, y_speed):
+        GameSprite.__init__(self, picture,w,h,x,y)
+        self.x_speed = x_speed
+        self.y_speed = y_speed
+    def update(self):
+        #horizontal movement first
+        if (player1.rect.x <= win_width-70 and player1.x_speed > 0 and player1.y_speed==0) or (player1.rect.x >= 0 and player1.x_speed < 0 and player1.y_speed==0):
+            self.rect.x += self.x_speed
+        #vertical movement first
+        if (player1.rect.y <= win_height-70 and player1.y_speed > 0 and player1.x_speed==0) or (player1.rect.y >= 0 and player1.y_speed < 0 and player1.x_speed==0):
+            self.rect.y += self.y_speed
+
+        #if we go behind the wall, we'll stand right up to it
+        platforms_touched = sprite.spritecollide(self, barrier, False)
+        if self.x_speed > 0: #we're going to the right, the character's right edge appears right up to the left edge of the wall
+            for p in platforms_touched:
+                self.rect.right = min(self.rect.right, p.rect.left) #if several walls were touched at once, then the right edge is the minimum possible
+        elif self.x_speed < 0: #we're going to the left, then put the character's left edge right up to the right edge of the wall
+            for p in platforms_touched:
+                self.rect.left = max(self.rect.left, p.rect.right) #if several walls have been touched, then the left edge is the maximum
+        
+
+        #if we go behind the wall, we'll stand right up to it
+        platforms_touched = sprite.spritecollide(self, barrier, False)
+        if self.y_speed > 0: # going down
+            for p in platforms_touched:
+                #We're checking which of the platforms is the highest from the ones below, aligning with it, and then take it as our support:
+                self.rect.bottom = min(self.rect.bottom, p.rect.top)
+        elif self.y_speed < 0: #going up
+            for p in platforms_touched:
+                self.rect.top = max(self.rect.top, p.rect.bottom) #aligning the upper edge along the lower edges of the walls that were touched
+    #fire
+    def fire(self):
+        bullet = Bullet('bullet.png',20,15, self.rect.right, self.rect.centery, 15)
+        bullets.add(bullet)
+
+
+class Enemy(GameSprite):
+    side = "left"
+    def __init__(self, picture,w,h,x,y, enemy_speed, limit1, limit2):
+        GameSprite.__init__(self,picture,w,h,x,y)
+        self.speed = enemy_speed
+        self.limit1 = limit1
+        self.limit2 = limit2
+
+    def update(self):
+        if self.rect.x <= self.limit1:
+            self.side = "right"
+        if self.rect.x >= self.limit2:
+            self.side = "left"
+        if self.side == "left":
+            self.rect.x -= self.speed
+        else:
+            self.rect.x += self.speed
+
+class Bullet(GameSprite):
+    def __init__(self, picture,w,h,x,y, bullet_speed):
+        GameSprite.__init__(self,picture,w,h,x,y)
+        self.speed = bullet_speed
+    def update(self):
+        self.rect.x += self.speed
+        #disappear
+        if self.rect.x > win_width+10:
+            self.kill()
+
+
+
+
+player1 = Player('Player_right.png', 70,70,0,430,0,0)
+#enemy
+enemy1 = Enemy('enemy_right.png', 60,70,480,130,7,10,480)
+target = GameSprite('rocket_2.png',80,100,620,400)
+#walls
+wall1 = GameSprite('platform2_vert.png',  50,300,350,200)
+wall2 = GameSprite('platform2_Hori.png', 170,60,220,200)
+wall3 = GameSprite('platform2_Hori.png', 270, 50, -20, 345)
+wall4 = GameSprite('platform2_vert.png', 50, 125, 80, 0)
+wall5 = GameSprite('platform2_Hori.png', 140,60,-20,200)
+wall6 = GameSprite('platform2_Hori.png', 400, 40, 220, 80)
+wall7 = GameSprite('platform2_vert.png',50,140, 550, 80)
+wall8 = GameSprite('platform2_Hori.png', 225, 50, 490, 300)
+#wall grouping
+barrier = sprite.Group()
+barrier.add(wall1)
+barrier.add(wall2)
+barrier.add(wall3)
+barrier.add(wall4)
+barrier.add(wall5)
+barrier.add(wall6)
+barrier.add(wall7)
+barrier.add(wall8)
+#bullets grouping
+bullets = sprite.Group()
+#enemy grouping
+enemies = sprite.Group()
+enemies.add(enemy1)
+
+Finish=False
+#loop
+run=True
+while run:
+
+
+    time.delay(50)
+    for e in event.get():
+        if e.type == QUIT:
+            run=False
+            #W
+        elif e.type == KEYDOWN:
+            if e.key == K_w:
+                player1.y_speed = -7
+            elif e.key == K_a:
+                player1.x_speed = -10
+            elif e.key == K_s:
+                player1.y_speed = 7
+            elif e.key == K_d:
+                player1.x_speed = 10
+            elif e.key == K_SPACE:
+                player1.fire()
+
+        elif e.type == KEYUP:
+            if e.key == K_w:
+                player1.y_speed = 0
+            elif e.key == K_a:
+                player1.x_speed = 0
+            elif e.key == K_s:
+                player1.y_speed = 0
+            elif e.key == K_d:
+                player1.x_speed = 0
+    if not Finish:    
+    #Updates
+        window.blit(bg, (0,0))
+        #walls
+        barrier.draw(window)
+        #players
+        player1.reset()
+        player1.update()
+        target.reset()
+        #enemies
+        enemies.update()
+        enemies.draw(window)
+        sprite.groupcollide(bullets, enemies, True, True)
+        sprite.groupcollide(bullets, barrier, True, False)
+        #bulletss
+        bullets.update()
+        bullets.draw(window)
+
+        if sprite.spritecollide(player1, enemies, False):
+            Finish = True
+            fail = image.load('fail_1.jpg')
+            scale = fail.get_width() // fail.get_height()
+            window.fill((255,255,255))
+            window.blit(transform.scale(fail, (win_height * scale, win_height)), (100,0))
+
+        if sprite.collide_rect(player1, target):
+            Finish = True
+            trophy = image.load('trophy.png')
+            d = trophy.get_width() // trophy.get_height()
+            window.fill((255,255,255))
+            window.blit(transform.scale(trophy, ((win_height * d)-300, win_height-300)), (250, 80))
+            window.blit(win, (240, 290))
+
+    #display
+    display.update()
